@@ -129,7 +129,7 @@ section .text
 			mov bl, 219
 		.write:
 			mov byte [es:si], bl
-			mov byte [es:si + 1], 1Fh
+			mov byte [es:si + 1], 7Fh
 			inc di
 			add si, 2
 			cmp si, 4000
