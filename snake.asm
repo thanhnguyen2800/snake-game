@@ -145,15 +145,15 @@ section .text
 			jmp .write
 		.is_snake_head:
 			mov bl, 2
-			mov bh, 0Ah
+			mov bh, 0Bh
 			jmp .write
 		.is_snake_horizontal:
 			mov bl, 205
-			mov bh, 02h
+			mov bh, 09h
 			jmp .write
 		.is_snake_vertical:
 			mov bl, 186
-			mov bh, 02h
+			mov bh, 09h
 			jmp .write
 		.is_food_red:
 			mov bl, 219
