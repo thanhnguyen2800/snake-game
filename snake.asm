@@ -8,6 +8,12 @@
 		bits 16
 		org 100h
 
+%define FOOD_RED     9
+%define FOOD_GREEN   10
+%define FOOD_YELLOW  11
+%define FOOD_MAGENTA 12
+%define SNAKE_HEAD   13
+
 section .text
 		call hide_cursor
 	start:
@@ -104,10 +110,11 @@ section .text
 		.end:
 			ret
 		
-	;   0 = snake right
+	;   1 = snake right
 	;   2 = snake left
 	;   4 = snake down
 	;   8 = snake up
+	;  13 = snake head
 	; > 8 = ASCII char
 	buffer_render:
 			mov ax, 0b800h
@@ -116,20 +123,56 @@ section .text
 			mov si, 0
 		.next:
 			mov bl, [di]
+			mov bh, 7Fh
+			cmp bl, SNAKE_HEAD
+			jz .is_snake_head
 			cmp bl, 8
-			jz .is_snake
+			jz .is_snake_vertical
 			cmp bl, 4
-			jz .is_snake
+			jz .is_snake_vertical
 			cmp bl, 2
-			jz .is_snake
+			jz .is_snake_horizontal
 			cmp bl, 1
-			jz .is_snake
+			jz .is_snake_horizontal
+			cmp bl, FOOD_RED
+			jz .is_food_red
+			cmp bl, FOOD_GREEN
+			jz .is_food_green
+			cmp bl, FOOD_YELLOW
+			jz .is_food_yellow
+			cmp bl, FOOD_MAGENTA
+			jz .is_food_magenta
 			jmp .write
-		.is_snake:
+		.is_snake_head:
+			mov bl, 2
+			mov bh, 0Ah
+			jmp .write
+		.is_snake_horizontal:
+			mov bl, 205
+			mov bh, 02h
+			jmp .write
+		.is_snake_vertical:
+			mov bl, 186
+			mov bh, 02h
+			jmp .write
+		.is_food_red:
 			mov bl, 219
+			mov bh, 0Ch
+			jmp .write
+		.is_food_green:
+			mov bl, 219
+			mov bh, 0Ah
+			jmp .write
+		.is_food_yellow:
+			mov bl, 219
+			mov bh, 0Eh
+			jmp .write
+		.is_food_magenta:
+			mov bl, 219
+			mov bh, 0Dh
 		.write:
 			mov byte [es:si], bl
-			mov byte [es:si + 1], 7Fh
+			mov byte [es:si + 1], bh
 			inc di
 			add si, 2
 			cmp si, 4000
@@ -301,9 +344,17 @@ section .text
 			mov dh, 0
 			mov dl, [snake_head_y]
 			call buffer_read
+			cmp bl, SNAKE_HEAD
+			je .set_game_over
 			cmp bl, 8
 			jle .set_game_over
-			cmp bl, '*'
+			cmp bl, FOOD_RED
+			je .food
+			cmp bl, FOOD_GREEN
+			je .food
+			cmp bl, FOOD_YELLOW
+			je .food
+			cmp bl, FOOD_MAGENTA
 			je .food
 			cmp bl, ' '
 			je .empty_space
@@ -311,7 +362,7 @@ section .text
 			cmp al, 1
 			mov byte [is_game_over], al 
 		.write_new_head:
-			mov bl, 1
+			mov bl, SNAKE_HEAD
 			mov ch, 0
 			mov cl, [snake_head_x]
 			mov ch, 0
@@ -395,7 +446,10 @@ section .text
 			mov al, [di + bx]
 			cmp al, ' ' ; create food just in empty position
 			jnz .try_again
-			mov byte [di + bx], '*'
+			mov al, dl
+			and al, 03h
+			add al, FOOD_RED
+			mov byte [di + bx], al
 			ret
 
 	reset:
