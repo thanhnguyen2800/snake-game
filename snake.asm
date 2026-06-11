@@ -13,6 +13,7 @@
 %define FOOD_YELLOW  11
 %define FOOD_MAGENTA 12
 %define SNAKE_HEAD   13
+%define OBSTACLE     178    ; khối gạch chướng ngại vật
 
 section .text
 		call hide_cursor
@@ -720,6 +721,7 @@ section .text
 			call reset		
 			call buffer_clear
 			call draw_border
+			call create_obstacles ;gọi hàm tạo vật cản
 			call create_initial_foods
 		.main_loop:
 			mov si, 2
@@ -735,6 +737,42 @@ section .text
 			cmp al, 0
 			jz .main_loop
 			ret
+	; Tạo chướng ngại vật
+    create_obstacles:
+            cmp byte [game_mode], 1     ; Kiểm tra nếu không phải HARD MODE (1) thì bỏ qua
+            jne .end
+
+            mov bl, OBSTACLE            ; Lấy ký tự vật cản gán vào bl
+
+            ; --- Khối vật cản 1 (Góc trên bên trái) ---
+            mov cx, 20                  ; Cột 20
+            mov dl, 7                   ; Dòng 7
+            call buffer_write           ; Vẽ ô đầu tiên
+            mov cx, 21                  ; Cột 21, dòng 7
+            call buffer_write           ; Vẽ ô thứ hai liên tiếp
+
+            ; --- Khối vật cản 2 (Góc trên bên phải) ---
+            mov cx, 60                  ; Cột 60
+            mov dl, 7                   ; Dòng 7
+            call buffer_write
+            mov cx, 59                  ; Cột 59, dòng 7
+            call buffer_write
+
+            ; --- Khối vật cản 3 (Góc dưới bên trái) ---
+            mov cx, 20                  ; Cột 20
+            mov dl, 18                  ; Dòng 18
+            call buffer_write
+            mov cx, 21                  ; Cột 21, dòng 18
+            call buffer_write
+
+            ; --- Khối vật cản 4 (Góc dưới bên phải) ---
+            mov cx, 60                  ; Cột 60
+            mov dl, 18                  ; Dòng 18
+            call buffer_write
+            mov cx, 59                  ; Cột 59, dòng 18
+            call buffer_write
+        .end:
+            ret
 
 	draw_border:
 			mov di, 0
