@@ -26,6 +26,8 @@ section .text
 		je .help
 		jmp exit_process
 	.play:
+		call show_difficulty_menu      ; Gọi Menu chọn cấp độ khó
+		mov [game_mode], al            ; Lưu lựa chọn (0 = Easy, 1 = Hard) vào biến
 		call start_playing
 		call show_game_over
 		jmp .menu
@@ -342,6 +344,57 @@ section .text
 		.hint:
 			db "UP/DOWN: SELECT  ENTER: OK  ESC: EXIT", 0
 
+	; cấp độ khó
+	show_difficulty_menu:
+        mov byte [menu_selected], 0
+        call clear_keyboard_buffer
+    .draw:
+        call buffer_clear
+        
+        mov si, .title
+        mov di, 428
+        call buffer_print_string
+        
+        mov si, .easy_mode
+        mov di, 765
+        call buffer_print_string
+        
+        mov si, .hard_mode
+        mov di, 925
+        call buffer_print_string
+
+        mov al, [menu_selected]
+        cmp al, 0
+        jnz .select_hard
+        mov byte [buffer + 760], '>'   ; Đặt con trỏ '>' ở dòng EASY
+        jmp .render
+    .select_hard:
+        mov byte [buffer + 920], '>'   ; Đặt con trỏ '>' ở dòng HARD
+    .render:
+        call buffer_render
+    .wait_key:
+        mov ah, 0
+        int 16h
+        cmp al, 13 ; ENTER
+        jz .return_selected
+        cmp ah, 48h ; Mũi tên lên
+        jz .toggle
+        cmp ah, 50h ; Mũi tên xuống
+        jz .toggle
+        jmp .wait_key
+    .toggle:
+        xor byte [menu_selected], 1    ; Đổi qua lại giữa 0 và 1
+        jmp .draw
+    .return_selected:
+        mov al, [menu_selected]
+        ret
+    .title:
+        db "SELECT GAME MODE", 0
+    .easy_mode:
+        db "EASY MODE", 0
+    .hard_mode:
+        db "HARD MODE", 0
+
 	show_help:
 			call buffer_clear
 			mov si, .title
@@ -500,7 +553,31 @@ section .text
 			call buffer_write
 			ret
 		.food:
+			cmp byte [game_mode], 0    ; Kiểm tra chế độ chơi
+            je .easy_score             ; Nếu bằng 0 -> Chạy sang chế độ EASY
+			; ---- TÍNH ĐIỂM THEO MÀU CHẾ ĐỘ HARD ----
+            cmp bl, FOOD_RED
+            je .add_1
+            cmp bl, FOOD_GREEN
+            je .add_2
+            cmp bl, FOOD_YELLOW
+            je .add_3
+            add dword [score], 5       ; Mặc định màu Tím cộng 5 điểm
+            jmp .food_continue
+        .add_1:
+            add dword [score], 1
+            jmp .food_continue
+        .add_2:
+            add dword [score], 2
+            jmp .food_continue
+        .add_3:
+            add dword [score], 3
+            jmp .food_continue
+
+		.easy_score:                   ; ---- TÍNH ĐIỂM THEO CHẾ ĐỘ EASY
 			inc dword [score]
+			
+		.food_continue:
 			call .write_new_head
 			call create_food
 			jmp .end
@@ -576,11 +653,50 @@ section .text
 			mov al, [di + bx]
 			cmp al, ' ' ; create food just in empty position
 			jnz .try_again
-			mov al, dl
-			and al, 03h
-			add al, FOOD_RED
-			mov byte [di + bx], al
-			ret
+			; ---- BẮT ĐẦU ĐOẠN PHÂN LUỒNG CHẾ ĐỘ CHƠI (PHÚC SỬA TẠI ĐÂY) ----
+            cmp byte [game_mode], 0
+            je .easy_food_distribution   ; Nếu game_mode = 0 (Easy) -> Nhảy xuống xử lý 2 màu
+
+            ; ---- CHẾ ĐỘ HARD (4 MÀU ) ----
+            mov ax, dx
+			xor dx, dx
+            mov cx, 100         ; Chia cho 100 lấy phần dư từ 0 đến 99 để tính tỷ lệ %
+            div cx
+			
+			cmp dx, 60          ; Tỷ lệ 60% đầu tiên (0 - 59) -> Ra màu đỏ
+            jl .set_red
+            cmp dx, 85          ; Tỷ lệ 25% tiếp theo (60 - 84) -> Ra màu xanh lá
+            jl .set_green
+            cmp dx, 97          ; Tỷ lệ 12% tiếp theo (85 - 96) -> Ra màu vàng
+            jl .set_yellow
+                                ; 3% còn lại (97 - 99) -> Ra màu tím (siêu hiếm)
+            mov al, FOOD_MAGENTA
+            jmp .write_to_buffer
+
+			; ---- CHẾ ĐỘ EASY (2 MÀU) ----
+        	.easy_food_distribution:
+            mov ax, dx
+            xor dx, dx
+            mov cx, 2           ; Chỉ chia cho 2 để lấy phần dư là 0 hoặc 1
+            div cx              ; dx = 0 hoặc 1 (tỷ lệ chia đôi 50/50)
+
+            cmp dx, 0
+            je .set_red         ; Nếu dư 0 -> Gán màu Đỏ
+            jmp .set_green      ; Nếu dư 1 -> Gán màu Xanh lá
+
+			; ---- CÁC NHÃN PHỤ TRỢ ĐỂ GÁN GIÁ TRI MÀU ----
+			.set_red:
+				mov al, FOOD_RED
+				jmp .write_to_buffer
+			.set_green:
+				mov al, FOOD_GREEN
+				jmp .write_to_buffer
+			.set_yellow:
+				mov al, FOOD_YELLOW
+
+			.write_to_buffer:
+				mov byte [di + bx], al   ; Ghi giá trị màu đã chọn vào ô nhớ trong buffer
+				ret
 
 	reset:
 			mov ax, 0
@@ -669,6 +785,7 @@ section .bss
 		score resw 1
 		is_game_over resb 1
 		menu_selected resb 1
+		game_mode resb 1  ; 0 là easy, 1 là hard
 
 		; 8 = up
 		; 4 = down
