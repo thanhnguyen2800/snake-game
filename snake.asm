@@ -744,32 +744,64 @@ section .text
 
             mov bl, OBSTACLE            ; Lấy ký tự vật cản gán vào bl
 
-            ; --- Khối vật cản 1 (Góc trên bên trái) ---
-            mov cx, 20                  ; Cột 20
+            ; --- Khối vật cản 1 (Thanh ngang phía trên bên trái - Dài 6 ô) ---
             mov dl, 7                   ; Dòng 7
-            call buffer_write           ; Vẽ ô đầu tiên
-            mov cx, 21                  ; Cột 21, dòng 7
-            call buffer_write           ; Vẽ ô thứ hai liên tiếp
+            mov cx, 18                  ; Bắt đầu từ cột 18
+            call buffer_write
+            mov cx, 19
+            call buffer_write
+            mov cx, 20
+            call buffer_write
+            mov cx, 21
+            call buffer_write
+            mov cx, 22
+            call buffer_write
+            mov cx, 23                  ; Kết thúc ở cột 23
+            call buffer_write
 
-            ; --- Khối vật cản 2 (Góc trên bên phải) ---
-            mov cx, 60                  ; Cột 60
+            ; --- Khối vật cản 2 (Thanh ngang phía trên bên phải - Dài 6 ô) ---
             mov dl, 7                   ; Dòng 7
+            mov cx, 57                  ; Bắt đầu từ cột 57
             call buffer_write
-            mov cx, 59                  ; Cột 59, dòng 7
+            mov cx, 58
+            call buffer_write
+            mov cx, 59
+            call buffer_write
+            mov cx, 60
+            call buffer_write
+            mov cx, 61
+            call buffer_write
+            mov cx, 62                  ; Kết thúc ở cột 62
             call buffer_write
 
-            ; --- Khối vật cản 3 (Góc dưới bên trái) ---
-            mov cx, 20                  ; Cột 20
+            ; --- Khối vật cản 3 (Thanh ngang phía dưới bên trái - Dài 6 ô) ---
             mov dl, 18                  ; Dòng 18
+            mov cx, 18                  ; Bắt đầu từ cột 18
             call buffer_write
-            mov cx, 21                  ; Cột 21, dòng 18
+            mov cx, 19
+            call buffer_write
+            mov cx, 20
+            call buffer_write
+            mov cx, 21
+            call buffer_write
+            mov cx, 22
+            call buffer_write
+            mov cx, 23                  ; Kết thúc ở cột 23
             call buffer_write
 
-            ; --- Khối vật cản 4 (Góc dưới bên phải) ---
-            mov cx, 60                  ; Cột 60
+            ; --- Khối vật cản 4 (Thanh ngang phía dưới bên phải - Dài 6 ô) ---
             mov dl, 18                  ; Dòng 18
+            mov cx, 57                  ; Bắt đầu từ cột 57
             call buffer_write
-            mov cx, 59                  ; Cột 59, dòng 18
+            mov cx, 58
+            call buffer_write
+            mov cx, 59
+            call buffer_write
+            mov cx, 60
+            call buffer_write
+            mov cx, 61
+            call buffer_write
+            mov cx, 62                  ; Kết thúc ở cột 62
             call buffer_write
         .end:
             ret
