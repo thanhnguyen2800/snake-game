@@ -157,11 +157,11 @@ section .text
 			jmp .write
 		.is_snake_horizontal:
 			mov bl, 205
-			mov bh, 09h
+			mov bh, [snake_color]
 			jmp .write
 		.is_snake_vertical:
 			mov bl, 186
-			mov bh, 09h
+			mov bh, [snake_color]
 			jmp .write
 		.is_food_red:
 			mov bl, 219
@@ -701,6 +701,7 @@ section .text
 			mov ax, 0
 			mov word [score], ax
 			mov byte [is_game_over], al
+            mov byte [snake_color], 09h
 			mov al, 8
 			mov byte [snake_direction], al
 			mov al, 40
@@ -731,13 +732,16 @@ section .text
             cmp ax, 20 ; Nếu điểm từ 10 đến 19: Rắn bò tốc độ nhanh
             jl .speed_fast
             mov si, 1 ; Nếu điểm >= 20: Ép tốc độ cao (1 tick (~0.055 giây))
+            mov byte [snake_color], 0Ch
             jmp .start_sleep
 
         .speed_normal:
             mov si, 3 ; 3 tick (~0.16 giây)
+            mov byte [snake_color], 09h
             jmp .start_sleep
         .speed_fast:
             mov si, 2 ; 2 tick (~0.11 giây)
+            mov byte [snake_color], 0Eh
         .start_sleep:
             call sleep
             call update_snake_direction
@@ -869,6 +873,7 @@ section .bss
 		is_game_over resb 1
 		menu_selected resb 1
 		game_mode resb 1  ; 0 là easy, 1 là hard
+        snake_color resb 1
 
 		; 8 = up
 		; 4 = down
