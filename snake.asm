@@ -561,20 +561,20 @@ section .text
             je .add_2
             cmp bl, FOOD_YELLOW
             je .add_3
-            add dword [score], 5       ; Mặc định màu Tím cộng 5 điểm
+            add word [score], 5       ; Mặc định màu Tím cộng 5 điểm
             jmp .food_continue
         .add_1:
-            add dword [score], 1
+            add word [score], 1
             jmp .food_continue
         .add_2:
-            add dword [score], 2
+            add word [score], 2
             jmp .food_continue
         .add_3:
-            add dword [score], 3
+            add word [score], 3
             jmp .food_continue
 
 		.easy_score:                   ; ---- TÍNH ĐIỂM THEO CHẾ ĐỘ EASY
-			inc dword [score]
+			inc word [score]
 			
 		.food_continue:
 			call .write_new_head
