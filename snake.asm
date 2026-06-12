@@ -339,6 +339,10 @@ section .text
 		.hint:
 			db "UP/DOWN: SELECT  ENTER: OK  ESC: EXIT", 0
 
+
+;Ka Phuc
+
+
 	; cấp độ khó
 	show_difficulty_menu:
         mov byte [menu_selected], 0
