@@ -1,20 +1,34 @@
-; snake game
-; assembly 8086
-; written by Leonardo Ono (ono.leo@gmail.com)
-;
-; target OS: DOS (.COM file extension)
-; use: nasm snake.asm -o snake.com -f bin
 
 		bits 16
 		org 100h
+
+%define FOOD_RED     9
+%define FOOD_GREEN   10
+%define FOOD_YELLOW  11
+%define FOOD_MAGENTA 12
+%define SNAKE_HEAD   13
+%define OBSTACLE     178    ; khối gạch chướng ngại vật
 
 section .text
 		call hide_cursor
 	start:
 		call show_title
+	.menu:
+		call show_menu
+		cmp al, 0
+		je .play
+		cmp al, 1
+		je .help
+		jmp exit_process
+	.play:
+		call show_difficulty_menu      ; Gọi Menu chọn cấp độ khó
+		mov [game_mode], al            ; Lưu lựa chọn (0 = Easy, 1 = Hard) vào biến
 		call start_playing
 		call show_game_over
-		jmp start
+		jmp .menu
+	.help:
+		call show_help
+		jmp .menu
 
 	; in:
 	;	si = number of 55.56 ms to wait
@@ -104,10 +118,11 @@ section .text
 		.end:
 			ret
 		
-	;   0 = snake right
+	;   1 = snake right
 	;   2 = snake left
 	;   4 = snake down
 	;   8 = snake up
+	;  13 = snake head
 	; > 8 = ASCII char
 	buffer_render:
 			mov ax, 0b800h
@@ -116,20 +131,56 @@ section .text
 			mov si, 0
 		.next:
 			mov bl, [di]
+			mov bh, 7Fh
+			cmp bl, SNAKE_HEAD
+			jz .is_snake_head
 			cmp bl, 8
-			jz .is_snake
+			jz .is_snake_vertical
 			cmp bl, 4
-			jz .is_snake
+			jz .is_snake_vertical
 			cmp bl, 2
-			jz .is_snake
+			jz .is_snake_horizontal
 			cmp bl, 1
-			jz .is_snake
+			jz .is_snake_horizontal
+			cmp bl, FOOD_RED
+			jz .is_food_red
+			cmp bl, FOOD_GREEN
+			jz .is_food_green
+			cmp bl, FOOD_YELLOW
+			jz .is_food_yellow
+			cmp bl, FOOD_MAGENTA
+			jz .is_food_magenta
 			jmp .write
-		.is_snake:
+		.is_snake_head:
+			mov bl, 2
+			mov bh, 0Bh
+			jmp .write
+		.is_snake_horizontal:
+			mov bl, 205
+			mov bh, 09h
+			jmp .write
+		.is_snake_vertical:
+			mov bl, 186
+			mov bh, 09h
+			jmp .write
+		.is_food_red:
 			mov bl, 219
+			mov bh, 0Ch
+			jmp .write
+		.is_food_green:
+			mov bl, 219
+			mov bh, 0Ah
+			jmp .write
+		.is_food_yellow:
+			mov bl, 219
+			mov bh, 0Eh
+			jmp .write
+		.is_food_magenta:
+			mov bl, 219
+			mov bh, 0Dh
 		.write:
 			mov byte [es:si], bl
-			mov byte [es:si + 1], 1Fh
+			mov byte [es:si + 1], bh
 			inc di
 			add si, 2
 			cmp si, 4000
@@ -199,13 +250,187 @@ section .text
 			dw 0855, 0935, 1015, 1016, 1017, 1018, 1019, 1020, 1021, 1022
 			dw 0696, 0697, 0698, 0699, 0700, 0701, 0702
 		.text_1:
-			db "DEVELOPED BY O.L. (C) 2017", 0
+			db "SNAKE GAME", 0
 		.text_2:
 			db "WRITTEN IN ASSEMBLY 8086 LANGUAGE :)", 0
 		.text_3:
-			db "PRESS ANY KEY TO START", 0
+			db " PRESS ANY KEY FOR MENU ", 0
 		.text_4:
 			db "                      ", 0
+
+	show_menu:
+			mov byte [menu_selected], 0
+			call clear_keyboard_buffer
+		.draw:
+			call buffer_clear
+			mov si, .title
+			mov di, 432
+			call buffer_print_string
+			mov si, .start_game
+			mov di, 753
+			call buffer_print_string
+			mov si, .how_to_play
+			mov di, 913
+			call buffer_print_string
+			mov si, .exit
+			mov di, 1073
+			call buffer_print_string
+			mov si, .hint
+			mov di, 1459
+			call buffer_print_string
+			mov al, [menu_selected]
+			cmp al, 0
+			jnz .select_help
+			mov byte [buffer + 750], '>'
+			jmp .render
+		.select_help:
+			cmp al, 1
+			jnz .select_exit
+			mov byte [buffer + 910], '>'
+			jmp .render
+		.select_exit:
+			mov byte [buffer + 1070], '>'
+		.render:
+			call buffer_render
+		.wait_key:
+			mov ah, 0
+			int 16h
+			cmp al, 27 ; ESC
+			jz .exit_selected
+			cmp al, 13 ; ENTER
+			jz .return_selected
+			cmp ah, 48h ; up
+			jz .up
+			cmp ah, 50h ; down
+			jz .down
+			jmp .wait_key
+		.up:
+			mov al, [menu_selected]
+			cmp al, 0
+			jnz .decrease
+			mov byte [menu_selected], 2
+			jmp .draw
+		.decrease:
+			dec byte [menu_selected]
+			jmp .draw
+		.down:
+			mov al, [menu_selected]
+			cmp al, 2
+			jnz .increase
+			mov byte [menu_selected], 0
+			jmp .draw
+		.increase:
+			inc byte [menu_selected]
+			jmp .draw
+		.return_selected:
+			mov al, [menu_selected]
+			ret
+		.exit_selected:
+			mov al, 2
+			ret
+		.title:
+			db "SNAKE GAME MENU", 0
+		.start_game:
+			db "START GAME", 0
+		.how_to_play:
+			db "HOW TO PLAY", 0
+		.exit:
+			db "EXIT", 0
+		.hint:
+			db "UP/DOWN: SELECT  ENTER: OK  ESC: EXIT", 0
+
+
+;Ka Phuc
+
+
+	; cấp độ khó
+	show_difficulty_menu:
+        mov byte [menu_selected], 0
+        call clear_keyboard_buffer
+    .draw:
+        call buffer_clear
+        
+        mov si, .title
+        mov di, 428
+        call buffer_print_string
+        
+        mov si, .easy_mode
+        mov di, 765
+        call buffer_print_string
+        
+        mov si, .hard_mode
+        mov di, 925
+        call buffer_print_string
+
+        mov al, [menu_selected]
+        cmp al, 0
+        jnz .select_hard
+        mov byte [buffer + 760], '>'   ; Đặt con trỏ '>' ở dòng EASY
+        jmp .render
+    .select_hard:
+        mov byte [buffer + 920], '>'   ; Đặt con trỏ '>' ở dòng HARD
+    .render:
+        call buffer_render
+    .wait_key:
+        mov ah, 0
+        int 16h
+        cmp al, 13 ; ENTER
+        jz .return_selected
+        cmp ah, 48h ; Mũi tên lên
+        jz .toggle
+        cmp ah, 50h ; Mũi tên xuống
+        jz .toggle
+        jmp .wait_key
+    .toggle:
+        xor byte [menu_selected], 1    ; Đổi qua lại giữa 0 và 1
+        jmp .draw
+    .return_selected:
+        mov al, [menu_selected]
+        ret
+    .title:
+        db "SELECT GAME MODE", 0
+    .easy_mode:
+        db "EASY MODE", 0
+    .hard_mode:
+        db "HARD MODE", 0
+
+	show_help:
+			call buffer_clear
+			mov si, .title
+			mov di, 429
+			call buffer_print_string
+			mov si, .line_1
+			mov di, 670
+			call buffer_print_string
+			mov si, .line_2
+			mov di, 830
+			call buffer_print_string
+			mov si, .line_3
+			mov di, 990
+			call buffer_print_string
+			mov si, .line_4
+			mov di, 1150
+			call buffer_print_string
+			mov si, .back
+			mov di, 1470
+			call buffer_print_string
+			call buffer_render
+			call clear_keyboard_buffer
+			mov ah, 0
+			int 16h
+			ret
+		.title:
+			db "SNAKE GAME - HOW TO PLAY", 0
+		.line_1:
+			db "USE ARROW KEYS TO MOVE THE SNAKE.", 0
+		.line_2:
+			db "EAT COLOR BLOCKS TO GROW AND SCORE.", 0
+		.line_3:
+			db "AVOID WALLS AND YOUR OWN BODY.", 0
+		.line_4:
+			db "PRESS ESC DURING GAME TO QUIT.", 0
+		.back:
+			db "PRESS ANY KEY TO RETURN", 0
 
 	print_score:
 			mov si, .text
@@ -301,9 +526,17 @@ section .text
 			mov dh, 0
 			mov dl, [snake_head_y]
 			call buffer_read
+			cmp bl, SNAKE_HEAD
+			je .set_game_over
 			cmp bl, 8
 			jle .set_game_over
-			cmp bl, '*'
+			cmp bl, FOOD_RED
+			je .food
+			cmp bl, FOOD_GREEN
+			je .food
+			cmp bl, FOOD_YELLOW
+			je .food
+			cmp bl, FOOD_MAGENTA
 			je .food
 			cmp bl, ' '
 			je .empty_space
@@ -311,7 +544,7 @@ section .text
 			cmp al, 1
 			mov byte [is_game_over], al 
 		.write_new_head:
-			mov bl, 1
+			mov bl, SNAKE_HEAD
 			mov ch, 0
 			mov cl, [snake_head_x]
 			mov ch, 0
@@ -319,7 +552,31 @@ section .text
 			call buffer_write
 			ret
 		.food:
+			cmp byte [game_mode], 0    ; Kiểm tra chế độ chơi
+            je .easy_score             ; Nếu bằng 0 -> Chạy sang chế độ EASY
+			; ---- TÍNH ĐIỂM THEO MÀU CHẾ ĐỘ HARD ----
+            cmp bl, FOOD_RED
+            je .add_1
+            cmp bl, FOOD_GREEN
+            je .add_2
+            cmp bl, FOOD_YELLOW
+            je .add_3
+            add dword [score], 5       ; Mặc định màu Tím cộng 5 điểm
+            jmp .food_continue
+        .add_1:
+            add dword [score], 1
+            jmp .food_continue
+        .add_2:
+            add dword [score], 2
+            jmp .food_continue
+        .add_3:
+            add dword [score], 3
+            jmp .food_continue
+
+		.easy_score:                   ; ---- TÍNH ĐIỂM THEO CHẾ ĐỘ EASY
 			inc dword [score]
+			
+		.food_continue:
 			call .write_new_head
 			call create_food
 			jmp .end
@@ -395,8 +652,50 @@ section .text
 			mov al, [di + bx]
 			cmp al, ' ' ; create food just in empty position
 			jnz .try_again
-			mov byte [di + bx], '*'
-			ret
+			; ---- BẮT ĐẦU ĐOẠN PHÂN LUỒNG CHẾ ĐỘ CHƠI (PHÚC SỬA TẠI ĐÂY) ----
+            cmp byte [game_mode], 0
+            je .easy_food_distribution   ; Nếu game_mode = 0 (Easy) -> Nhảy xuống xử lý 2 màu
+
+            ; ---- CHẾ ĐỘ HARD (4 MÀU ) ----
+            mov ax, dx
+			xor dx, dx
+            mov cx, 100         ; Chia cho 100 lấy phần dư từ 0 đến 99 để tính tỷ lệ %
+            div cx
+			
+			cmp dx, 60          ; Tỷ lệ 60% đầu tiên (0 - 59) -> Ra màu đỏ
+            jl .set_red
+            cmp dx, 85          ; Tỷ lệ 25% tiếp theo (60 - 84) -> Ra màu xanh lá
+            jl .set_green
+            cmp dx, 97          ; Tỷ lệ 12% tiếp theo (85 - 96) -> Ra màu vàng
+            jl .set_yellow
+                                ; 3% còn lại (97 - 99) -> Ra màu tím (siêu hiếm)
+            mov al, FOOD_MAGENTA
+            jmp .write_to_buffer
+
+			; ---- CHẾ ĐỘ EASY (2 MÀU) ----
+        	.easy_food_distribution:
+            mov ax, dx
+            xor dx, dx
+            mov cx, 2           ; Chỉ chia cho 2 để lấy phần dư là 0 hoặc 1
+            div cx              ; dx = 0 hoặc 1 (tỷ lệ chia đôi 50/50)
+
+            cmp dx, 0
+            je .set_red         ; Nếu dư 0 -> Gán màu Đỏ
+            jmp .set_green      ; Nếu dư 1 -> Gán màu Xanh lá
+
+			; ---- CÁC NHÃN PHỤ TRỢ ĐỂ GÁN GIÁ TRI MÀU ----
+			.set_red:
+				mov al, FOOD_RED
+				jmp .write_to_buffer
+			.set_green:
+				mov al, FOOD_GREEN
+				jmp .write_to_buffer
+			.set_yellow:
+				mov al, FOOD_YELLOW
+
+			.write_to_buffer:
+				mov byte [di + bx], al   ; Ghi giá trị màu đã chọn vào ô nhớ trong buffer
+				ret
 
 	reset:
 			mov ax, 0
@@ -420,6 +719,7 @@ section .text
 			call reset		
 			call buffer_clear
 			call draw_border
+			call create_obstacles ;gọi hàm tạo vật cản
 			call create_initial_foods
 		.main_loop:
 			mov si, 2
@@ -435,6 +735,74 @@ section .text
 			cmp al, 0
 			jz .main_loop
 			ret
+	; Tạo chướng ngại vật
+    create_obstacles:
+            cmp byte [game_mode], 1     ; Kiểm tra nếu không phải HARD MODE (1) thì bỏ qua
+            jne .end
+
+            mov bl, OBSTACLE            ; Lấy ký tự vật cản gán vào bl
+
+            ; --- Khối vật cản 1 (Thanh ngang phía trên bên trái - Dài 6 ô) ---
+            mov dl, 7                   ; Dòng 7
+            mov cx, 18                  ; Bắt đầu từ cột 18
+            call buffer_write
+            mov cx, 19
+            call buffer_write
+            mov cx, 20
+            call buffer_write
+            mov cx, 21
+            call buffer_write
+            mov cx, 22
+            call buffer_write
+            mov cx, 23                  ; Kết thúc ở cột 23
+            call buffer_write
+
+            ; --- Khối vật cản 2 (Thanh ngang phía trên bên phải - Dài 6 ô) ---
+            mov dl, 7                   ; Dòng 7
+            mov cx, 57                  ; Bắt đầu từ cột 57
+            call buffer_write
+            mov cx, 58
+            call buffer_write
+            mov cx, 59
+            call buffer_write
+            mov cx, 60
+            call buffer_write
+            mov cx, 61
+            call buffer_write
+            mov cx, 62                  ; Kết thúc ở cột 62
+            call buffer_write
+
+            ; --- Khối vật cản 3 (Thanh ngang phía dưới bên trái - Dài 6 ô) ---
+            mov dl, 18                  ; Dòng 18
+            mov cx, 18                  ; Bắt đầu từ cột 18
+            call buffer_write
+            mov cx, 19
+            call buffer_write
+            mov cx, 20
+            call buffer_write
+            mov cx, 21
+            call buffer_write
+            mov cx, 22
+            call buffer_write
+            mov cx, 23                  ; Kết thúc ở cột 23
+            call buffer_write
+
+            ; --- Khối vật cản 4 (Thanh ngang phía dưới bên phải - Dài 6 ô) ---
+            mov dl, 18                  ; Dòng 18
+            mov cx, 57                  ; Bắt đầu từ cột 57
+            call buffer_write
+            mov cx, 58
+            call buffer_write
+            mov cx, 59
+            call buffer_write
+            mov cx, 60
+            call buffer_write
+            mov cx, 61
+            call buffer_write
+            mov cx, 62                  ; Kết thúc ở cột 62
+            call buffer_write
+        .end:
+            ret
 
 	draw_border:
 			mov di, 0
@@ -484,6 +852,8 @@ section .text
 section .bss
 		score resw 1
 		is_game_over resb 1
+		menu_selected resb 1
+		game_mode resb 1  ; 0 là easy, 1 là hard
 
 		; 8 = up
 		; 4 = down
