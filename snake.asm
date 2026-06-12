@@ -252,9 +252,9 @@ section .text
 		.text_1:
 			db "SNAKE GAME", 0
 		.text_2:
-			db "WRITTEN IN ASSEMBLY 8086 LANGUAGE :)", 0
+			db "WRITTEN IN ASSEMBLY 8086 LANGUAGE", 0
 		.text_3:
-			db " PRESS ANY KEY FOR MENU ", 0
+			db "PRESS ANY KEY FOR MENU", 0
 		.text_4:
 			db "                      ", 0
 
