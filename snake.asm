@@ -722,19 +722,34 @@ section .text
 			call create_obstacles ;gọi hàm tạo vật cản
 			call create_initial_foods
 		.main_loop:
-			mov si, 2
-			call sleep
-		
-			call update_snake_direction
-			call update_snake_head
-			call check_snake_new_position
-			call print_score
-			call buffer_render
-		
-			mov al, [is_game_over]
-			cmp al, 0
-			jz .main_loop
-			ret
+            cmp byte [game_mode], 0 ; kiểm tra xem có phải EASY MODE không?
+			je .speed_normal ; nếu là EASY, ép cố định tốc độ bình thường (SI = 3)
+
+            mov ax, [score] ; Bốc điểm số hiện tại vào AX
+            cmp ax, 10 ; Nếu điểm < 10: Rắn bò tốc độ bình thường
+            jl .speed_normal
+            cmp ax, 20 ; Nếu điểm từ 10 đến 19: Rắn bò tốc độ nhanh
+            jl .speed_fast
+            mov si, 1 ; Nếu điểm >= 20: Ép tốc độ cao (1 tick (~0.055 giây))
+            jmp .start_sleep
+
+        .speed_normal:
+            mov si, 3 ; 3 tick (~0.16 giây)
+            jmp .start_sleep
+        .speed_fast:
+            mov si, 2 ; 2 tick (~0.11 giây)
+        .start_sleep:
+            call sleep
+            call update_snake_direction
+            call update_snake_head
+            call check_snake_new_position
+            call print_score
+            call buffer_render
+            mov al, [is_game_over]
+            cmp al, 0 ; nếu is_game_over = 0 thì trò chơi vẫn tiếp tục, nếu is_game_over = 1 thì kết thúc start_playing
+            jz .main_loop
+            ret
+            
 	; Tạo chướng ngại vật
     create_obstacles:
             cmp byte [game_mode], 1     ; Kiểm tra nếu không phải HARD MODE (1) thì bỏ qua
