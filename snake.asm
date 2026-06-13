@@ -157,11 +157,11 @@ section .text
 			jmp .write
 		.is_snake_horizontal:
 			mov bl, 205
-			mov bh, 09h
+			mov bh, [snake_color]
 			jmp .write
 		.is_snake_vertical:
 			mov bl, 186
-			mov bh, 09h
+			mov bh, [snake_color]
 			jmp .write
 		.is_food_red:
 			mov bl, 219
@@ -252,9 +252,9 @@ section .text
 		.text_1:
 			db "SNAKE GAME", 0
 		.text_2:
-			db "WRITTEN IN ASSEMBLY 8086 LANGUAGE :)", 0
+			db "WRITTEN IN ASSEMBLY 8086 LANGUAGE", 0
 		.text_3:
-			db " PRESS ANY KEY FOR MENU ", 0
+			db "PRESS ANY KEY FOR MENU", 0
 		.text_4:
 			db "                      ", 0
 
@@ -561,20 +561,20 @@ section .text
             je .add_2
             cmp bl, FOOD_YELLOW
             je .add_3
-            add dword [score], 5       ; Mặc định màu Tím cộng 5 điểm
+            add word [score], 5       ; Mặc định màu Tím cộng 5 điểm
             jmp .food_continue
         .add_1:
-            add dword [score], 1
+            add word [score], 1
             jmp .food_continue
         .add_2:
-            add dword [score], 2
+            add word [score], 2
             jmp .food_continue
         .add_3:
-            add dword [score], 3
+            add word [score], 3
             jmp .food_continue
 
 		.easy_score:                   ; ---- TÍNH ĐIỂM THEO CHẾ ĐỘ EASY
-			inc dword [score]
+			inc word [score]
 			
 		.food_continue:
 			call .write_new_head
@@ -701,6 +701,7 @@ section .text
 			mov ax, 0
 			mov word [score], ax
 			mov byte [is_game_over], al
+            mov byte [snake_color], 09h
 			mov al, 8
 			mov byte [snake_direction], al
 			mov al, 40
@@ -722,19 +723,37 @@ section .text
 			call create_obstacles ;gọi hàm tạo vật cản
 			call create_initial_foods
 		.main_loop:
-			mov si, 2
-			call sleep
-		
-			call update_snake_direction
-			call update_snake_head
-			call check_snake_new_position
-			call print_score
-			call buffer_render
-		
-			mov al, [is_game_over]
-			cmp al, 0
-			jz .main_loop
-			ret
+            cmp byte [game_mode], 0 ; kiểm tra xem có phải EASY MODE không?
+			je .speed_normal ; nếu là EASY, ép cố định tốc độ bình thường (SI = 3)
+
+            mov ax, [score] ; Bốc điểm số hiện tại vào AX
+            cmp ax, 10 ; Nếu điểm < 10: Rắn bò tốc độ bình thường
+            jl .speed_normal
+            cmp ax, 20 ; Nếu điểm từ 10 đến 19: Rắn bò tốc độ nhanh
+            jl .speed_fast
+            mov si, 1 ; Nếu điểm >= 20: Ép tốc độ cao (1 tick (~0.055 giây))
+            mov byte [snake_color], 0Ch
+            jmp .start_sleep
+
+        .speed_normal:
+            mov si, 3 ; 3 tick (~0.16 giây)
+            mov byte [snake_color], 09h
+            jmp .start_sleep
+        .speed_fast:
+            mov si, 2 ; 2 tick (~0.11 giây)
+            mov byte [snake_color], 0Eh
+        .start_sleep:
+            call sleep
+            call update_snake_direction
+            call update_snake_head
+            call check_snake_new_position
+            call print_score
+            call buffer_render
+            mov al, [is_game_over]
+            cmp al, 0 ; nếu is_game_over = 0 thì trò chơi vẫn tiếp tục, nếu is_game_over = 1 thì kết thúc start_playing
+            jz .main_loop
+            ret
+            
 	; Tạo chướng ngại vật
     create_obstacles:
             cmp byte [game_mode], 1     ; Kiểm tra nếu không phải HARD MODE (1) thì bỏ qua
@@ -854,6 +873,7 @@ section .bss
 		is_game_over resb 1
 		menu_selected resb 1
 		game_mode resb 1  ; 0 là easy, 1 là hard
+        snake_color resb 1
 
 		; 8 = up
 		; 4 = down
